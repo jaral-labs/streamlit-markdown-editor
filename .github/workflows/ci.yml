@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint & type-check
+    name: Lint, type-check & security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -28,6 +28,8 @@ jobs:
         run: uv run ruff format --check .
       - name: Mypy
         run: uv run mypy
+      - name: Bandit (security)
+        run: uv run bandit -c pyproject.toml -r src
 
   test:
     name: Test (py${{ matrix.python-version }})

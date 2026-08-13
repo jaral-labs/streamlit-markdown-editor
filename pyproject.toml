@@ -39,6 +39,7 @@ dev = [
   "pytest",
   "pytest-cov",
   "pre-commit",
+  "bandit[toml]",
 ]
 
 # src-layout: ship the package from src/ (TECH-001).
@@ -67,3 +68,7 @@ files = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=streamlit_markdown_editor --cov-report=term-missing --cov-fail-under=85"
+
+[tool.bandit]
+# Security scan of package code only; tests use `assert` (B101) legitimately.
+exclude_dirs = ["tests", ".venv"]
