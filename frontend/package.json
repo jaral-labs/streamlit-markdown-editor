@@ -28,7 +28,10 @@
     "@milkdown/preset-gfm": "^7.22.0",
     "@milkdown/utils": "^7.22.0",
     "@streamlit/component-v2-lib": "^0.2.0",
-    "codemirror": "^6.0.2"
+    "codemirror": "^6.0.2",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

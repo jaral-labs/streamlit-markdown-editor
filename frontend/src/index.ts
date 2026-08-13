@@ -1,14 +1,7 @@
-import { Editor, rootCtx, defaultValueCtx } from '@milkdown/core'
-import { commonmark } from '@milkdown/preset-commonmark'
-import { gfm } from '@milkdown/preset-gfm'
-import { listener, listenerCtx } from '@milkdown/plugin-listener'
-import { getMarkdown, replaceAll } from '@milkdown/utils'
-import { EditorView, basicSetup } from 'codemirror'
-import { markdown } from '@codemirror/lang-markdown'
-import proseMirrorCss from '@milkdown/prose/view/style/prosemirror.css?inline'
-import proseTablesCss from '@milkdown/prose/tables/style/tables.css?inline'
-import proseGapcursorCss from '@milkdown/prose/gapcursor/style/gapcursor.css?inline'
 import { debounce, type Debounced } from './debounce'
+import { planSwitch, type Mode } from './sync'
+import { injectProseMirrorStyles } from './styles'
+import { CodeMirrorSurface, MilkdownSurface, type Surface } from './surfaces'
 import type { FrontendRenderer } from '@streamlit/component-v2-lib'
 
 /** State key the markdown value is reported back to Python under. */
@@ -27,27 +20,21 @@ interface ComponentData {
   revision?: number
 }
 
-type Mode = 'wysiwyg' | 'raw'
-
 /**
  * Per-mount state, persisted across Streamlit reruns in {@link INSTANCES}.
- * `canonical` is the single source-of-truth markdown string; the two editor
- * surfaces (Milkdown WYSIWYG + CodeMirror 6 raw) are synced to/from it.
- * `dirty` means the *inactive* surface is stale vs. `canonical`; `hydrating`
- * suppresses the change echo while we load `canonical` into a surface.
+ * `canonical` is the single source-of-truth markdown string; the two
+ * {@link Surface}s are synced to/from it. `dirty` means the *inactive* surface
+ * is stale vs. `canonical`.
  */
 interface Instance {
-  toggle: HTMLElement
-  wysiwygEl: HTMLElement
-  rawEl: HTMLElement
+  buttons: NodeListOf<HTMLButtonElement>
+  wysiwyg: Surface
+  raw: Surface
   canonical: string
   /** Last-seen consumer revision nonce (undefined if the consumer sends none). */
   revision: number | undefined
   mode: Mode
   dirty: boolean
-  hydrating: boolean
-  milkdown: Editor | null
-  cmView: EditorView | null
   /** Push a value to Python; refreshed each render to the latest callback. */
   setState: (md: string) => void
   /** Debounced outbound push; created once, cancelled on cleanup. */
@@ -71,151 +58,44 @@ function queryOrThrow<T extends Element>(
   return el
 }
 
-// Milkdown/ProseMirror CSS is not shadow-aware, so a normal `import './x.css'`
-// (which injects into document <head>) would never reach an editor mounted in
-// the component's shadow root. We instead adopt the CSS as a constructed
-// stylesheet on the mount's root. Built once, shared across roots. CodeMirror
-// styles itself via its `root` option (see mountCodeMirror).
-let proseStyleSheet: CSSStyleSheet | null = null
-
-function injectProseMirrorStyles(root: Document | ShadowRoot): void {
-  if (proseStyleSheet === null) {
-    proseStyleSheet = new CSSStyleSheet()
-    proseStyleSheet.replaceSync(
-      [proseMirrorCss, proseTablesCss, proseGapcursorCss].join('\n'),
-    )
-  }
-  if (!root.adoptedStyleSheets.includes(proseStyleSheet)) {
-    root.adoptedStyleSheets = [...root.adoptedStyleSheets, proseStyleSheet]
-  }
+function surfaceOf(inst: Instance, mode: Mode): Surface {
+  return mode === 'wysiwyg' ? inst.wysiwyg : inst.raw
 }
 
-/** Mount Milkdown (WYSIWYG) into `el`, seeded with `initial` markdown. */
-async function mountMilkdown(
-  el: HTMLElement,
-  initial: string,
-  onChange: (md: string) => void,
-): Promise<Editor> {
-  return Editor.make()
-    .config((ctx) => {
-      ctx.set(rootCtx, el)
-      ctx.set(defaultValueCtx, initial)
-      ctx.get(listenerCtx).markdownUpdated((_ctx, md) => onChange(md))
-    })
-    .use(commonmark)
-    .use(gfm)
-    .use(listener)
-    .create()
+function setActiveButton(inst: Instance, mode: Mode): void {
+  inst.buttons.forEach((b) =>
+    b.classList.toggle('sme-active', b.dataset.mode === mode),
+  )
 }
 
-/** Mount CodeMirror 6 (raw markdown) into `el`, seeded with `initial`. */
-function mountCodeMirror(
-  el: HTMLElement,
-  initial: string,
-  root: Document | ShadowRoot,
-  onChange: (md: string) => void,
-): EditorView {
-  return new EditorView({
-    doc: initial,
-    extensions: [
-      basicSetup,
-      markdown(),
-      EditorView.updateListener.of((u) => {
-        if (u.docChanged) onChange(u.state.doc.toString())
-      }),
-    ],
-    parent: el,
-    root,
-  })
-}
-
-/**
- * B4/B5/B12: mount both editors into the scaffold surface nodes, inject the
- * ProseMirror CSS, and wire edit events to the canonical string + debounced push.
- */
-function mountEditors(
-  inst: Instance,
-  parentElement: HTMLElement | ShadowRoot,
-): void {
-  const root: Document | ShadowRoot =
-    parentElement instanceof ShadowRoot ? parentElement : document
-  injectProseMirrorStyles(root)
-
-  // A user edit on the active surface updates `canonical`, marks the other
-  // (hidden) surface stale, and schedules a push to Python. Programmatic
-  // hydration sets `hydrating` to skip this echo.
-  const onEdit = (md: string): void => {
-    if (inst.hydrating) return
-    inst.canonical = md
-    inst.dirty = true
-    inst.schedulePush?.()
-  }
-
-  const seed = inst.canonical
-  inst.cmView = mountCodeMirror(inst.rawEl, seed, root, onEdit)
-  void mountMilkdown(inst.wysiwygEl, seed, onEdit).then((ed) => {
-    inst.milkdown = ed
-    // If an external update (B9) arrived while Milkdown was mounting and the
-    // WYSIWYG surface is active, it loaded with a now-stale seed — resync it.
-    // (The raw-active case is covered by `dirty` + the toggle's lazy resync.)
-    if (inst.mode === 'wysiwyg' && inst.canonical !== seed) {
-      hydrate(inst, 'wysiwyg')
-    }
-  })
-}
-
-/** Serialize whichever surface is active into `canonical` (defensive). */
-function pullCanonical(inst: Instance): void {
-  if (inst.mode === 'wysiwyg' && inst.milkdown) {
-    inst.canonical = inst.milkdown.action(getMarkdown())
-  } else if (inst.mode === 'raw' && inst.cmView) {
-    inst.canonical = inst.cmView.state.doc.toString()
-  }
-}
-
-/** Load `canonical` into the given surface, suppressing the change echo. */
-function hydrate(inst: Instance, mode: Mode): void {
-  inst.hydrating = true
-  try {
-    if (mode === 'wysiwyg') {
-      inst.milkdown?.action(replaceAll(inst.canonical))
-    } else if (inst.cmView) {
-      const view = inst.cmView
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: inst.canonical },
-      })
-    }
-  } finally {
-    inst.hydrating = false
-  }
-}
-
-/** B6: switch mode, lazily rehydrating the target only when the source is dirty. */
+/** B6/B7: switch mode, lazily rehydrating + carrying the caret across. */
 function switchMode(inst: Instance, target: Mode): void {
-  if (target === inst.mode) return
-  pullCanonical(inst)
-  if (inst.dirty) {
-    hydrate(inst, target)
+  const plan = planSwitch(inst.mode, target, inst.dirty)
+  if (!plan.changed) return
+  const source = surfaceOf(inst, inst.mode)
+  const dest = surfaceOf(inst, target)
+
+  if (source.isReady()) inst.canonical = source.getMarkdown()
+  const blockIndex = source.captureBlockIndex()
+  if (plan.hydrateTarget) {
+    dest.setMarkdown(inst.canonical)
     inst.dirty = false
   }
-  inst.wysiwygEl.style.display = target === 'wysiwyg' ? '' : 'none'
-  inst.rawEl.style.display = target === 'raw' ? '' : 'none'
-  inst.toggle
-    .querySelectorAll<HTMLButtonElement>('button[data-mode]')
-    .forEach((b) => b.classList.toggle('sme-active', b.dataset.mode === target))
+  source.hide()
+  dest.show()
+  setActiveButton(inst, target)
   inst.mode = target
+  dest.restoreBlockIndex(blockIndex)
 }
 
 /** B6: wire the scaffold's mode-toggle buttons. */
 function setupToggle(inst: Instance): void {
-  inst.toggle
-    .querySelectorAll<HTMLButtonElement>('button[data-mode]')
-    .forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const target = btn.dataset.mode
-        if (target === 'wysiwyg' || target === 'raw') switchMode(inst, target)
-      })
+  inst.buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.mode
+      if (target === 'wysiwyg' || target === 'raw') switchMode(inst, target)
     })
+  })
 }
 
 const renderer: FrontendRenderer<Record<string, unknown>, ComponentData> = (
@@ -225,28 +105,50 @@ const renderer: FrontendRenderer<Record<string, unknown>, ComponentData> = (
 
   let inst = INSTANCES.get(parentElement)
   if (!inst) {
-    // First render: query the B2 scaffold, create the surface nodes + state,
-    // mount both editors (B4/B5/B12) and wire the toggle (B6) + push (B8).
+    // First render: query the B2 scaffold, create the surface nodes, mount both
+    // editors (B4/B5/B12) and wire the toggle (B6/B7) + debounced push (B8).
     const root = queryOrThrow<HTMLElement>(parentElement, '.sme-root')
-    const surface = queryOrThrow<HTMLElement>(root, '.sme-surface')
+    const toggle = queryOrThrow<HTMLElement>(root, '.sme-toggle')
+    const surfaceEl = queryOrThrow<HTMLElement>(root, '.sme-surface')
     const wysiwygEl = document.createElement('div')
     wysiwygEl.className = 'sme-wysiwyg'
     const rawEl = document.createElement('div')
     rawEl.className = 'sme-raw'
-    rawEl.style.display = 'none' // WYSIWYG is the default mode
-    surface.append(wysiwygEl, rawEl)
+    surfaceEl.append(wysiwygEl, rawEl)
+
+    const domRoot: Document | ShadowRoot =
+      parentElement instanceof ShadowRoot ? parentElement : document
+    injectProseMirrorStyles(domRoot)
+
+    const seed = data.value
+    // Edits look the instance up at call time (it's populated just below), so
+    // the surfaces can be constructed before the instance object exists.
+    const onEdit = (md: string): void => {
+      const i = INSTANCES.get(parentElement)
+      if (!i) return
+      i.canonical = md
+      i.dirty = true
+      i.schedulePush?.()
+    }
+    const raw = new CodeMirrorSurface(rawEl, seed, domRoot, onEdit)
+    const wysiwyg = new MilkdownSurface(wysiwygEl, seed, onEdit, (self) => {
+      // If an external update (B9) arrived while Milkdown was mounting and the
+      // WYSIWYG surface is active, it loaded with a now-stale seed — resync it.
+      const i = INSTANCES.get(parentElement)
+      if (i && i.mode === 'wysiwyg' && i.canonical !== seed) {
+        self.setMarkdown(i.canonical)
+      }
+    })
+    raw.hide() // WYSIWYG is the default mode
 
     inst = {
-      toggle: queryOrThrow<HTMLElement>(root, '.sme-toggle'),
-      wysiwygEl,
-      rawEl,
-      canonical: data.value,
+      buttons: toggle.querySelectorAll<HTMLButtonElement>('button[data-mode]'),
+      wysiwyg,
+      raw,
+      canonical: seed,
       revision: data.revision,
       mode: 'wysiwyg',
       dirty: false,
-      hydrating: false,
-      milkdown: null,
-      cmView: null,
       setState: () => {},
       schedulePush: null,
     }
@@ -256,24 +158,24 @@ const renderer: FrontendRenderer<Record<string, unknown>, ComponentData> = (
       () => created.setState(created.canonical),
       PUSH_DEBOUNCE_MS,
     )
-    mountEditors(created, parentElement)
     setupToggle(created)
-    // TODO B7: line/column cursor sync on mode switch.
-  } else {
-    // B9 inbound reconcile (ARCH-004). A genuine external change (vs. the echo
-    // of our own outbound edit) is detected by the consumer's `revision` nonce
-    // when provided, else by byte-equality. On a real change, apply `value` to
-    // the active surface (guarded via `hydrating`) and mark the hidden one stale.
-    const external =
-      data.revision !== undefined
-        ? data.revision !== inst.revision
-        : data.value !== inst.canonical
-    if (external) {
-      inst.revision = data.revision
-      inst.canonical = data.value
-      hydrate(inst, inst.mode)
-      inst.dirty = true
-    }
+
+    // B11: commit any pending debounced edit when focus leaves the component
+    // entirely (relatedTarget is null when focus exits the shadow tree; moving
+    // between the editor and the toggle stays inside `root` and is ignored).
+    root.addEventListener('focusout', (event) => {
+      if (!root.contains(event.relatedTarget as Node | null)) {
+        created.schedulePush?.flush()
+      }
+    })
+  } else if (isExternalChange(inst, data)) {
+    // B9 inbound reconcile (ARCH-004): a genuine external change (not the echo
+    // of our own outbound edit). Apply to the active surface, mark the hidden
+    // one stale for lazy resync on the next toggle.
+    inst.revision = data.revision
+    inst.canonical = data.value
+    surfaceOf(inst, inst.mode).setMarkdown(inst.canonical)
+    inst.dirty = true
   }
 
   // Refresh the outbound callback each render so pushes use the current one.
@@ -284,11 +186,22 @@ const renderer: FrontendRenderer<Record<string, unknown>, ComponentData> = (
     const current = INSTANCES.get(parentElement)
     if (current) {
       current.schedulePush?.cancel()
-      void current.milkdown?.destroy()
-      current.cmView?.destroy()
+      current.wysiwyg.destroy()
+      current.raw.destroy()
       INSTANCES.delete(parentElement)
     }
   }
+}
+
+/**
+ * Is an inbound `value` a genuine external change vs. the echo of our own
+ * outbound edit? Gated by the consumer's `revision` nonce when provided
+ * (ARCH-004), else by byte-equality.
+ */
+function isExternalChange(inst: Instance, data: ComponentData): boolean {
+  return data.revision !== undefined
+    ? data.revision !== inst.revision
+    : data.value !== inst.canonical
 }
 
 export default renderer

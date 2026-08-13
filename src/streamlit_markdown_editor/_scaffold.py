@@ -60,5 +60,11 @@ SCAFFOLD_CSS: str = """
   border: 1px solid var(--st-gray-color, #dddddd);
   border-radius: 4px;
   min-height: 8rem;
+  color: var(--st-text-color, inherit);
+  font-family: var(--st-font, inherit);
+}
+.sme-surface .ProseMirror {
+  padding: 0.5rem;
+  outline: none;
 }
 """
