@@ -1985,7 +1985,7 @@ wheels = [
 
 [[package]]
 name = "streamlit-markdown-editor"
-version = "0.0.0"
+version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "streamlit" },
@@ -2002,7 +2002,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "streamlit", specifier = ">=1.30,<2" }]
+requires-dist = [{ name = "streamlit", specifier = ">=1.60" }]
 
 [package.metadata.requires-dev]
 dev = [
