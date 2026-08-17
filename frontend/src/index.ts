@@ -98,85 +98,98 @@ function setupToggle(inst: Instance): void {
   })
 }
 
+/**
+ * First render: query the B2 scaffold, create the surface nodes, mount both
+ * editors (B4/B5/B12) and wire the toggle (B6/B7) + debounced push (B8/B11).
+ * Registers the new instance in {@link INSTANCES} and returns it.
+ */
+function mount(
+  parentElement: HTMLElement | ShadowRoot,
+  data: ComponentData,
+): Instance {
+  const root = queryOrThrow<HTMLElement>(parentElement, '.sme-root')
+  const toggle = queryOrThrow<HTMLElement>(root, '.sme-toggle')
+  const surfaceEl = queryOrThrow<HTMLElement>(root, '.sme-surface')
+  const wysiwygEl = document.createElement('div')
+  wysiwygEl.className = 'sme-wysiwyg'
+  const rawEl = document.createElement('div')
+  rawEl.className = 'sme-raw'
+  surfaceEl.append(wysiwygEl, rawEl)
+
+  const domRoot: Document | ShadowRoot =
+    parentElement instanceof ShadowRoot ? parentElement : document
+  injectProseMirrorStyles(domRoot)
+
+  const seed = data.value
+  // Edits look the instance up at call time (it's registered just below), so
+  // the surfaces can be constructed before the instance object exists.
+  const onEdit = (md: string): void => {
+    const i = INSTANCES.get(parentElement)
+    if (!i) return
+    i.canonical = md
+    i.dirty = true
+    i.schedulePush?.()
+  }
+  const raw = new CodeMirrorSurface(rawEl, seed, domRoot, onEdit)
+  const wysiwyg = new MilkdownSurface(wysiwygEl, seed, onEdit, (self) => {
+    // If an external update (B9) arrived while Milkdown was mounting and the
+    // WYSIWYG surface is active, it loaded with a now-stale seed — resync it.
+    const i = INSTANCES.get(parentElement)
+    if (i && i.mode === 'wysiwyg' && i.canonical !== seed) {
+      self.setMarkdown(i.canonical)
+    }
+  })
+  raw.hide() // WYSIWYG is the default mode
+
+  const inst: Instance = {
+    buttons: toggle.querySelectorAll<HTMLButtonElement>('button[data-mode]'),
+    wysiwyg,
+    raw,
+    canonical: seed,
+    revision: data.revision,
+    mode: 'wysiwyg',
+    dirty: false,
+    setState: () => {},
+    schedulePush: null,
+  }
+  INSTANCES.set(parentElement, inst)
+  inst.schedulePush = debounce(
+    () => inst.setState(inst.canonical),
+    PUSH_DEBOUNCE_MS,
+  )
+  setupToggle(inst)
+
+  // B11: commit any pending debounced edit when focus leaves the component
+  // entirely (relatedTarget is null when focus exits the shadow tree; moving
+  // between the editor and the toggle stays inside `root` and is ignored).
+  root.addEventListener('focusout', (event) => {
+    if (!root.contains(event.relatedTarget as Node | null)) {
+      inst.schedulePush?.flush()
+    }
+  })
+  return inst
+}
+
+/**
+ * B9 inbound reconcile (ARCH-004): a genuine external change (not the echo of
+ * our own outbound edit) arrived. Apply it to the active surface and mark the
+ * hidden one stale for lazy resync on the next toggle.
+ */
+function reconcile(inst: Instance, data: ComponentData): void {
+  inst.revision = data.revision
+  inst.canonical = data.value
+  surfaceOf(inst, inst.mode).setMarkdown(inst.canonical)
+  inst.dirty = true
+}
+
 const renderer: FrontendRenderer<Record<string, unknown>, ComponentData> = (
   args,
 ) => {
   const { parentElement, data } = args
 
   let inst = INSTANCES.get(parentElement)
-  if (!inst) {
-    // First render: query the B2 scaffold, create the surface nodes, mount both
-    // editors (B4/B5/B12) and wire the toggle (B6/B7) + debounced push (B8).
-    const root = queryOrThrow<HTMLElement>(parentElement, '.sme-root')
-    const toggle = queryOrThrow<HTMLElement>(root, '.sme-toggle')
-    const surfaceEl = queryOrThrow<HTMLElement>(root, '.sme-surface')
-    const wysiwygEl = document.createElement('div')
-    wysiwygEl.className = 'sme-wysiwyg'
-    const rawEl = document.createElement('div')
-    rawEl.className = 'sme-raw'
-    surfaceEl.append(wysiwygEl, rawEl)
-
-    const domRoot: Document | ShadowRoot =
-      parentElement instanceof ShadowRoot ? parentElement : document
-    injectProseMirrorStyles(domRoot)
-
-    const seed = data.value
-    // Edits look the instance up at call time (it's populated just below), so
-    // the surfaces can be constructed before the instance object exists.
-    const onEdit = (md: string): void => {
-      const i = INSTANCES.get(parentElement)
-      if (!i) return
-      i.canonical = md
-      i.dirty = true
-      i.schedulePush?.()
-    }
-    const raw = new CodeMirrorSurface(rawEl, seed, domRoot, onEdit)
-    const wysiwyg = new MilkdownSurface(wysiwygEl, seed, onEdit, (self) => {
-      // If an external update (B9) arrived while Milkdown was mounting and the
-      // WYSIWYG surface is active, it loaded with a now-stale seed — resync it.
-      const i = INSTANCES.get(parentElement)
-      if (i && i.mode === 'wysiwyg' && i.canonical !== seed) {
-        self.setMarkdown(i.canonical)
-      }
-    })
-    raw.hide() // WYSIWYG is the default mode
-
-    inst = {
-      buttons: toggle.querySelectorAll<HTMLButtonElement>('button[data-mode]'),
-      wysiwyg,
-      raw,
-      canonical: seed,
-      revision: data.revision,
-      mode: 'wysiwyg',
-      dirty: false,
-      setState: () => {},
-      schedulePush: null,
-    }
-    INSTANCES.set(parentElement, inst)
-    const created = inst
-    created.schedulePush = debounce(
-      () => created.setState(created.canonical),
-      PUSH_DEBOUNCE_MS,
-    )
-    setupToggle(created)
-
-    // B11: commit any pending debounced edit when focus leaves the component
-    // entirely (relatedTarget is null when focus exits the shadow tree; moving
-    // between the editor and the toggle stays inside `root` and is ignored).
-    root.addEventListener('focusout', (event) => {
-      if (!root.contains(event.relatedTarget as Node | null)) {
-        created.schedulePush?.flush()
-      }
-    })
-  } else if (isExternalChange(inst, data)) {
-    // B9 inbound reconcile (ARCH-004): a genuine external change (not the echo
-    // of our own outbound edit). Apply to the active surface, mark the hidden
-    // one stale for lazy resync on the next toggle.
-    inst.revision = data.revision
-    inst.canonical = data.value
-    surfaceOf(inst, inst.mode).setMarkdown(inst.canonical)
-    inst.dirty = true
-  }
+  if (!inst) inst = mount(parentElement, data)
+  else if (isExternalChange(inst, data)) reconcile(inst, data)
 
   // Refresh the outbound callback each render so pushes use the current one.
   inst.setState = (md) => args.setStateValue(STATE_KEY, md)
