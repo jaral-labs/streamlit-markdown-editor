@@ -1,0 +1,70 @@
+name: publish
+
+# Builds the distributions once and publishes them via PyPI "trusted publishing"
+# (OIDC) — no API tokens or secrets. Fires when a GitHub Release is published
+# (release-please creates those), and can be run manually against TestPyPI.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - name: Build sdist + wheel
+        run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Trusted publishing — no token. One-time setup on test.pypi.org:
+    #   project "streamlit-markdown-editor" -> Publishing -> Add a pending/trusted
+    #   publisher (GitHub): owner=jaral-labs, repository=streamlit-markdown-editor,
+    #   workflow=publish.yml, environment=(leave blank).
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Publishes to real PyPI on published Releases only (manual workflow_dispatch
+    # stays TestPyPI-only). Requires, on pypi.org:
+    #   - a trusted publisher: owner=jaral-labs, repository=streamlit-markdown-editor,
+    #     workflow=publish.yml, environment=pypi
+    #   - a `pypi` environment (Settings -> Environments), ideally with required
+    #     reviewers so each release pauses for manual approval before it ships.
+    if: ${{ github.event_name == 'release' }}
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
