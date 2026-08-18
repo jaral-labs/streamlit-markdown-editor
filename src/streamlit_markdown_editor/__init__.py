@@ -6,4 +6,4 @@ packaging are in place; the ``st_markdown_editor`` Python API is added in a
 future version.
 """
 
-__version__ = "0.0.0"  # x-release-please-version
+__version__ = "0.0.1"  # x-release-please-version
