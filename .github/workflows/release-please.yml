@@ -1,25 +1,26 @@
-name: release-please
+  name: release-please
 
-on:
-  push:
-    branches:
-      - main
+  on:
+    push:
+      branches:
+        - main
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  permissions:
+    contents: write
+    pull-requests: write
+    issues: write
 
-jobs:
-  release-please:
-    runs-on: ubuntu-latest
-    steps:
-      # Maintains a standing release PR that bumps the version files + CHANGELOG
-      # from Conventional Commits; merging it tags and cuts the GitHub Release.
-      # Uses the default GITHUB_TOKEN — swap in a PAT here if a tag-triggered
-      # publish workflow is added later, since releases/tags created with
-      # GITHUB_TOKEN do not trigger downstream workflows.
-      - uses: googleapis/release-please-action@v4
-        with:
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
+  jobs:
+    release-please:
+      runs-on: ubuntu-latest
+      steps:
+        # Maintains a standing release PR that bumps version files + CHANGELOG from
+        # Conventional Commits; merging it tags and cuts the GitHub Release. Runs
+        # with an org-admin PAT (RELEASE_PLEASE_TOKEN) so it can open the release PR
+        # and create the v* tag; the org protect-release-tags ruleset restricts tag
+        # creation to org admins, which the default GITHUB_TOKEN is not.
+        - uses: googleapis/release-please-action@v4
+          with:
+            config-file: release-please-config.json
+            manifest-file: .release-please-manifest.json
+            token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
