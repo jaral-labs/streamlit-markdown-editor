@@ -1,0 +1,53 @@
+{
+  "name": "streamlit-markdown-editor-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Frontend for the streamlit-markdown-editor component (Streamlit v2 custom component, Vite, reactless).",
+  "license": "MIT",
+  "prettier": {
+    "singleQuote": true,
+    "semi": false
+  },
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development vite build --watch",
+    "build": "cross-env NODE_ENV=production vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "security": "npm audit --audit-level=moderate",
+    "clean": "rimraf build"
+  },
+  "dependencies": {
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@milkdown/core": "^7.22.0",
+    "@milkdown/plugin-listener": "^7.22.0",
+    "@milkdown/preset-commonmark": "^7.22.0",
+    "@milkdown/preset-gfm": "^7.22.0",
+    "@milkdown/utils": "^7.22.0",
+    "@streamlit/component-v2-lib": "^0.2.0",
+    "codemirror": "^6.0.2",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "cross-env": "^7.0.3",
+    "eslint": "^10.8.1",
+    "eslint-plugin-security": "^4.0.1",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "vite": "^8.0.10",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

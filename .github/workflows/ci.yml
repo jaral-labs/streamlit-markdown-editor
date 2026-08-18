@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint & type-check
+    name: Lint, type-check & security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -28,6 +28,8 @@ jobs:
         run: uv run ruff format --check .
       - name: Mypy
         run: uv run mypy
+      - name: Bandit (security)
+        run: uv run bandit -c pyproject.toml -r src
 
   test:
     name: Test (py${{ matrix.python-version }})
@@ -44,3 +46,30 @@ jobs:
       - run: uv sync --python ${{ matrix.python-version }}
       - name: Pytest (coverage gate from pyproject)
         run: uv run pytest
+
+  frontend:
+    name: Frontend gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npm run typecheck
+      - name: Prettier format check
+        run: npm run format:check
+      - name: ESLint (incl. eslint-plugin-security)
+        run: npm run lint
+      - name: npm audit (dependency security)
+        run: npm run security
+      - name: Vitest
+        run: npm test
+      - name: Build
+        run: npm run build

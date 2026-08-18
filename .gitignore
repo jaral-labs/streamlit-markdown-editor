@@ -56,3 +56,9 @@ Thumbs.db
 
 # ── Local-only repo governance (applied to GitHub via `gh api`, not tracked here) ──
 .github/rulesets/*.json
+
+# ── Throwaway spikes (not part of the package) ──
+spike/
+
+# ── Claude working directory (scratch scripts / tmp outputs) ──
+.claude_functions/
