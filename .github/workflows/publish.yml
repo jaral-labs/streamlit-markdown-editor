@@ -18,11 +18,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # frontend/build/ is gitignored, so a clean checkout has no bundle. It must
+      # be built here or the wheel ships without a frontend — silently.
+      - name: Build frontend bundle
+        working-directory: frontend
+        run: npm ci && npm run build
       - uses: astral-sh/setup-uv@v9.0.0
         with:
           enable-cache: true
       - name: Build sdist + wheel
         run: uv build
+      # Publishing is irreversible, so verify the bundle actually landed in the
+      # wheel *before* the publish jobs run. Both the missing-build and the
+      # missing-force-include failure modes are otherwise silent.
+      - name: Verify frontend assets are packaged
+        run: |
+          set -euo pipefail
+          wheel=$(ls dist/*.whl)
+          echo "Inspecting $wheel"
+          if ! unzip -l "$wheel" | grep -qE 'streamlit_markdown_editor/frontend/index-.*\.js'; then
+            echo "::error::Wheel is missing the frontend bundle (streamlit_markdown_editor/frontend/index-*.js)"
+            unzip -l "$wheel"
+            exit 1
+          fi
+          echo "OK: frontend bundle present in wheel"
       - uses: actions/upload-artifact@v4
         with:
           name: dist
