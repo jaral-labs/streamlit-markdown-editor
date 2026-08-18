@@ -53,16 +53,25 @@ packages = ["src/streamlit_markdown_editor"]
 # `uv build`; CI does this and then asserts the assets landed (see publish.yml).
 [tool.hatch.build.targets.wheel.force-include]
 "frontend/build" = "streamlit_markdown_editor/frontend"
+# Streamlit discovers the component manifest by scanning installed distributions
+# for a pyproject.toml declaring [[tool.streamlit.component.components]] — the
+# repo-root copy is never installed, so ship this file inside the package. It
+# carries [project].name, which the scanner requires to validate that the
+# manifest belongs to this distribution (it rejects manifests it cannot attribute).
+"pyproject.toml" = "streamlit_markdown_editor/pyproject.toml"
 
 # Ship the same assets in the sdist so it can be rebuilt without Node.
 [tool.hatch.build.targets.sdist.force-include]
 "frontend/build" = "frontend/build"
 
-# Streamlit v2 component asset registration: points at the packaged copy of the
-# frontend bundle (inside the installed package), not the repo-relative source.
+# Streamlit v2 component manifest. asset_dir resolves against the *package root*
+# — the installed streamlit_markdown_editor/ directory — and must stay inside it,
+# so this names the force-included bundle above, not the repo-relative source
+# path. The key Python registers with is "<[project].name>.<name>", i.e.
+# "streamlit-markdown-editor.streamlit_markdown_editor" (see _component.py).
 [[tool.streamlit.component.components]]
 name = "streamlit_markdown_editor"
-asset_dir = "src/streamlit_markdown_editor/frontend"
+asset_dir = "frontend"
 
 [tool.ruff]
 line-length = 88
@@ -82,6 +91,21 @@ convention = "numpy"
 python_version = "3.10"
 strict = true
 files = ["src"]
+
+# numpy (pulled in transitively by streamlit) ships stubs written with 3.12+
+# `type` statement syntax, which is a hard syntax error under our 3.10 floor and
+# aborts the whole run before our own code is checked. Skip following into it;
+# python_version stays at 3.10 because that is the version this package must
+# actually support. Deliberately scoped to numpy — skipping streamlit would
+# degrade st.components.v2 to Any, exactly where strict checking earns its keep.
+[[tool.mypy.overrides]]
+# "numpy" itself as well as "numpy.*": the offending stub is numpy/__init__.pyi,
+# and the .* pattern covers only submodules.
+module = ["numpy", "numpy.*"]
+follow_imports = "skip"
+# follow_imports alone is ignored for stub files, and the offending file is a
+# .pyi — this makes the skip apply to stubs too.
+follow_imports_for_stubs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
