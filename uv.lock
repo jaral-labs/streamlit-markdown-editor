@@ -1985,7 +1985,7 @@ wheels = [
 
 [[package]]
 name = "streamlit-markdown-editor"
-version = "0.0.1"
+version = "0.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "streamlit" },
