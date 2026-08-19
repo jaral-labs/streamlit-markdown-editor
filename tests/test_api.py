@@ -10,6 +10,9 @@ separately with ``streamlit run``.
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+from streamlit.errors import StreamlitAPIException
+
 from streamlit_markdown_editor import _api, _component, st_markdown_editor
 
 
@@ -63,3 +66,91 @@ def test_get_renderer_registers_once_and_memoizes() -> None:
         assert component.call_args.args[0] == _component.COMPONENT_NAME
     finally:
         _component.get_renderer.cache_clear()
+
+
+# --- Inbound reconciliation (the equivalent callback) ---------------------
+
+
+def _exact(candidate: str, current: str) -> bool:
+    return candidate == current
+
+
+def _whitespace_insensitive(candidate: str, current: str) -> bool:
+    return candidate.strip() == current.strip()
+
+
+def test_equivalent_without_key_raises() -> None:
+    # The guard fires before any state or renderer access.
+    with pytest.raises(StreamlitAPIException):
+        st_markdown_editor("# x", equivalent=_exact)
+
+
+def test_genuine_change_bumps_revision_and_returns_value() -> None:
+    session: dict[str, object] = {}
+    renderer = MagicMock(return_value={})
+    with (
+        patch.object(_api, "get_renderer", return_value=renderer),
+        patch.object(_api.st, "session_state", session),
+    ):
+        st_markdown_editor("# A", key="k", equivalent=_exact)  # seed
+        out = st_markdown_editor("# B", key="k", equivalent=_exact)  # external change
+    assert out == "# B"
+    assert renderer.call_args.kwargs["data"] == {"value": "# B", "revision": 1}
+
+
+def test_echo_holds_revision_and_returns_reported_markdown() -> None:
+    session: dict[str, object] = {}
+    renderer = MagicMock()
+    with (
+        patch.object(_api, "get_renderer", return_value=renderer),
+        patch.object(_api.st, "session_state", session),
+    ):
+        renderer.return_value = {"markdown": "# A"}
+        st_markdown_editor("# A", key="k", equivalent=_exact)  # seed
+        renderer.return_value = {"markdown": "# A edited"}
+        # Same value passed back while the user has edited -> echo, not external.
+        out = st_markdown_editor("# A", key="k", equivalent=_exact)
+    assert out == "# A edited"
+    assert renderer.call_args.kwargs["data"]["revision"] == 0
+
+
+def test_normalized_equivalent_treats_reformatted_echo_as_echo() -> None:
+    session: dict[str, object] = {}
+    renderer = MagicMock(return_value={"markdown": "# A"})
+    with (
+        patch.object(_api, "get_renderer", return_value=renderer),
+        patch.object(_api.st, "session_state", session),
+    ):
+        st_markdown_editor("# A", key="k", equivalent=_whitespace_insensitive)  # seed
+        # A whitespace-only reformat of the last output is recognized as an echo.
+        st_markdown_editor("# A   \n", key="k", equivalent=_whitespace_insensitive)
+    assert renderer.call_args.kwargs["data"]["revision"] == 0
+
+
+def test_reconcile_non_string_reported_falls_back_to_value() -> None:
+    session: dict[str, object] = {}
+    renderer = MagicMock(return_value={"markdown": 123})
+    with (
+        patch.object(_api, "get_renderer", return_value=renderer),
+        patch.object(_api.st, "session_state", session),
+    ):
+        # Echo path with a non-str reported value -> fall back to the input.
+        out = st_markdown_editor("# A", key="k", equivalent=_exact)
+    assert out == "# A"
+
+
+def test_reconcile_state_persists_across_reruns() -> None:
+    session: dict[str, object] = {}
+    renderer = MagicMock(return_value={})
+    with (
+        patch.object(_api, "get_renderer", return_value=renderer),
+        patch.object(_api.st, "session_state", session),
+    ):
+        st_markdown_editor("# A", key="k", equivalent=_exact)  # seed
+        st_markdown_editor("# B", key="k", equivalent=_exact)  # external
+        st_markdown_editor("# C", key="k", equivalent=_exact)  # external
+    # Two genuine changes after the seed -> revision 2, last_output tracked.
+    assert session[_api._TRACK_KEY_PREFIX + "k"] == {
+        "last_output": "# C",
+        "revision": 2,
+    }
