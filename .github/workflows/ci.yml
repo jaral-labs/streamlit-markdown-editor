@@ -73,3 +73,26 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  integration:
+    name: Packaged-component integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # The integration test builds the wheel, which force-includes frontend/build/;
+      # that directory is gitignored, so the frontend must be built here first (the
+      # test skips when it is absent — e.g. in the unit-test matrix job).
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend bundle
+        working-directory: frontend
+        run: npm ci && npm run build
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv sync
+      - name: Integration test (build wheel, install into a clean venv, AppTest)
+        run: uv run pytest tests/integration/ --no-cov
