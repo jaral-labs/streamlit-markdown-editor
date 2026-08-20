@@ -8,15 +8,17 @@ registration wiring be unit-tested here; end-to-end behaviour is validated
 separately with ``streamlit run``.
 """
 
+from collections.abc import Mapping
 from unittest.mock import MagicMock, patch
 
 import pytest
+import streamlit as st
 from streamlit.errors import StreamlitAPIException
 
 from streamlit_markdown_editor import _api, _component, st_markdown_editor
 
 
-def _fake_renderer(state: dict[str, object]) -> MagicMock:
+def _fake_renderer(state: Mapping[str, object]) -> MagicMock:
     """A stand-in mount renderer that returns a fixed state dict when called."""
     return MagicMock(return_value=dict(state))
 
@@ -90,7 +92,7 @@ def test_genuine_change_bumps_revision_and_returns_value() -> None:
     renderer = MagicMock(return_value={})
     with (
         patch.object(_api, "get_renderer", return_value=renderer),
-        patch.object(_api.st, "session_state", session),
+        patch.object(st, "session_state", session),
     ):
         st_markdown_editor("# A", key="k", equivalent=_exact)  # seed
         out = st_markdown_editor("# B", key="k", equivalent=_exact)  # external change
@@ -103,7 +105,7 @@ def test_echo_holds_revision_and_returns_reported_markdown() -> None:
     renderer = MagicMock()
     with (
         patch.object(_api, "get_renderer", return_value=renderer),
-        patch.object(_api.st, "session_state", session),
+        patch.object(st, "session_state", session),
     ):
         renderer.return_value = {"markdown": "# A"}
         st_markdown_editor("# A", key="k", equivalent=_exact)  # seed
@@ -119,7 +121,7 @@ def test_normalized_equivalent_treats_reformatted_echo_as_echo() -> None:
     renderer = MagicMock(return_value={"markdown": "# A"})
     with (
         patch.object(_api, "get_renderer", return_value=renderer),
-        patch.object(_api.st, "session_state", session),
+        patch.object(st, "session_state", session),
     ):
         st_markdown_editor("# A", key="k", equivalent=_whitespace_insensitive)  # seed
         # A whitespace-only reformat of the last output is recognized as an echo.
@@ -132,7 +134,7 @@ def test_reconcile_non_string_reported_falls_back_to_value() -> None:
     renderer = MagicMock(return_value={"markdown": 123})
     with (
         patch.object(_api, "get_renderer", return_value=renderer),
-        patch.object(_api.st, "session_state", session),
+        patch.object(st, "session_state", session),
     ):
         # Echo path with a non-str reported value -> fall back to the input.
         out = st_markdown_editor("# A", key="k", equivalent=_exact)
@@ -144,7 +146,7 @@ def test_reconcile_state_persists_across_reruns() -> None:
     renderer = MagicMock(return_value={})
     with (
         patch.object(_api, "get_renderer", return_value=renderer),
-        patch.object(_api.st, "session_state", session),
+        patch.object(st, "session_state", session),
     ):
         st_markdown_editor("# A", key="k", equivalent=_exact)  # seed
         st_markdown_editor("# B", key="k", equivalent=_exact)  # external
