@@ -26,6 +26,13 @@ dependencies = [
   "streamlit>=1.60",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "flake8-cognitive-complexity>=0.1.0",
+  "flake8>=7.3.0",
+  "flake8-pyproject>=1.2.3",
+]
+
 [project.urls]
 Homepage = "https://github.com/jaral-labs/streamlit-markdown-editor"
 Repository = "https://github.com/jaral-labs/streamlit-markdown-editor"
@@ -86,6 +93,15 @@ convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D"] # docstrings not required in tests
+
+# Cognitive-complexity check (flake8-cognitive-complexity). Flags functions whose
+# cognitive complexity exceeds the threshold — the measure ruff's mccabe (C901)
+# cyclomatic check does not cover. Threshold below is a starting value; adjust.
+# NOTE: flake8 does not read pyproject.toml natively — this section is honoured
+# only when the Flake8-pyproject plugin is installed, and the check runs only when
+# flake8 (the runner) and flake8-cognitive-complexity are both present.
+[tool.flake8]
+max-cognitive-complexity = 10
 
 [tool.mypy]
 python_version = "3.10"
