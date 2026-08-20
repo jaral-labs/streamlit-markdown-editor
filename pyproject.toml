@@ -71,6 +71,14 @@ packages = ["src/streamlit_markdown_editor"]
 [tool.hatch.build.targets.sdist.force-include]
 "frontend/build" = "frontend/build"
 
+# The force-include above targets `frontend/build`, a gitignored artifact that is
+# absent on a dev/editable install (`uv sync`) or a fresh checkout — hatchling
+# then raises FileNotFoundError before any file is collected. This build hook
+# creates the (possibly empty) directory first so those builds succeed; the hook
+# lives under src/ (not the repo root default) to satisfy file-placement rules.
+[tool.hatch.build.hooks.custom]
+path = "src/hatch_build.py"
+
 # Streamlit v2 component manifest. asset_dir resolves against the *package root*
 # — the installed streamlit_markdown_editor/ directory — and must stay inside it,
 # so this names the force-included bundle above, not the repo-relative source
