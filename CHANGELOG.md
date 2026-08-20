@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.2](https://github.com/jaral-labs/streamlit-markdown-editor/compare/v0.0.1...v0.0.2) (2026-08-20)
+
+
+### Features
+
+* add the st_markdown_editor Python API ([#8](https://github.com/jaral-labs/streamlit-markdown-editor/issues/8)) ([#12](https://github.com/jaral-labs/streamlit-markdown-editor/issues/12)) ([4a86f5a](https://github.com/jaral-labs/streamlit-markdown-editor/commit/4a86f5a1bb4f70ac4df715c6aa4bf790f1fde22a))
+
 ## 0.0.1 (2026-08-18)
 
 
