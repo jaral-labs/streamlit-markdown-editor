@@ -133,7 +133,8 @@ follow_imports_for_stubs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=streamlit_markdown_editor --cov-report=term-missing --cov-fail-under=85"
+# tests/e2e is a Node/Playwright project (no Python tests) — keep pytest out of it.
+addopts = "--cov=streamlit_markdown_editor --cov-report=term-missing --cov-fail-under=85 --ignore=tests/e2e"
 
 [tool.bandit]
 # Security scan of package code only; tests use `assert` (B101) legitimately.
