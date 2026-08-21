@@ -1,0 +1,14 @@
+{
+  "name": "streamlit-markdown-editor-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright end-to-end tests driving the live Streamlit demo app.",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0"
+  }
+}

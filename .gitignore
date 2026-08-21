@@ -26,6 +26,7 @@ coverage.xml
 
 # ── Virtual environments ──
 .venv/
+.venv-*/
 venv/
 env/
 .hatch/
@@ -40,6 +41,12 @@ yarn-error.log*
 # before packaging (plan step 12). Comment this line out instead if you
 # choose to commit the built assets into the wheel source.
 # frontend/build/
+
+# ── Playwright e2e (tests/e2e) ──
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # ── Environment / secrets ──
 .env

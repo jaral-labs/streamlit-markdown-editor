@@ -96,3 +96,44 @@ jobs:
       - run: uv sync
       - name: Integration test (build wheel, install into a clean venv, AppTest)
         run: uv run pytest tests/integration/ --no-cov
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend bundle
+        working-directory: frontend
+        run: npm ci && npm run build
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      # The demo must run from a *wheel* install, not an editable one, so the
+      # component's in-package manifest + bundle are discoverable at runtime.
+      - name: Build wheel and install into an isolated venv
+        run: |
+          uv build --wheel
+          uv venv .venv-e2e
+          uv pip install --python .venv-e2e/bin/python dist/*.whl
+      - name: Install Playwright + Chromium
+        working-directory: tests/e2e
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+      - name: Run Playwright e2e
+        working-directory: tests/e2e
+        env:
+          # Point the webServer at the wheel env's streamlit (see playwright.config.ts).
+          STREAMLIT_BIN: ${{ github.workspace }}/.venv-e2e/bin/streamlit
+        run: npx playwright test
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report/
+          retention-days: 7
