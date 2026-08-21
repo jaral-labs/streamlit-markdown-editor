@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 /**
  * End-to-end tests that drive the live Streamlit demo (`examples/app.py`) in a
@@ -14,7 +16,15 @@ import { defineConfig, devices } from '@playwright/test'
  */
 const PORT = Number(process.env.E2E_PORT ?? 8501)
 const BASE_URL = `http://localhost:${PORT}`
-const STREAMLIT = process.env.STREAMLIT_BIN ?? 'streamlit'
+
+// Resolve the streamlit binary. Explicit STREAMLIT_BIN wins (CI sets it to the
+// wheel venv). Otherwise prefer the local wheel venv `.venv-demo` if present, so
+// a bare `npx playwright test` works without activating it; else fall back to
+// whatever `streamlit` is on PATH.
+const localWheelStreamlit = resolve(__dirname, '../../.venv-demo/bin/streamlit')
+const STREAMLIT =
+  process.env.STREAMLIT_BIN ??
+  (existsSync(localWheelStreamlit) ? localWheelStreamlit : 'streamlit')
 
 export default defineConfig({
   testDir: '.',
