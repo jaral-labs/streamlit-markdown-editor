@@ -4,9 +4,11 @@ A Streamlit component providing a **dual-mode (WYSIWYG ⇄ raw) markdown editor*
 
 ## What it is
 
+![The streamlit-markdown-editor in WYSIWYG mode](docs/editor-wysiwyg.png)
+
 A Streamlit input widget for editing markdown in two synchronized modes:
 
-- **WYSIWYG (rendered)** — powered by [Milkdown](https://milkdown.dev). You see formatted content, not syntax: format with the usual keyboard shortcuts (⌘/Ctrl-B, …) and markdown input rules (type `# ` for a heading, `- ` for a list; GFM tables and task lists), which convert to rendered elements as you type. There is no formatting toolbar.
+- **WYSIWYG (rendered)** — powered by [Milkdown](https://milkdown.dev). You see formatted content, not syntax: format with the usual keyboard shortcuts (⌘/Ctrl-B, …) and markdown input rules (type `# ` for a heading, `- ` for a list; GFM tables), which convert to rendered elements as you type. There is no formatting toolbar.
 - **Raw** — the CommonMark source as plain text, powered by [CodeMirror 6](https://codemirror.net) with markdown syntax highlighting.
 
 A toggle above the editor switches modes; the two views stay in sync over a single canonical markdown string, and the caret is carried across a switch on a best-effort (line/column) basis. The widget takes markdown in and returns markdown out — nothing else to wire up.
