@@ -73,6 +73,13 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Regenerate third-party license notice
+        run: npm run licenses
+      - name: Verify THIRD_PARTY_LICENSES.txt is committed and current
+        working-directory: ${{ github.workspace }}
+        run: |
+          git diff --exit-status THIRD_PARTY_LICENSES.txt \
+            || { echo "::error::THIRD_PARTY_LICENSES.txt is stale — run 'npm run licenses' in frontend/ and commit the result."; exit 1; }
 
   integration:
     name: Packaged-component integration

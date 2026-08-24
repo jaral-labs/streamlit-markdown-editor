@@ -47,6 +47,12 @@ jobs:
             exit 1
           fi
           echo "OK: frontend bundle present in wheel"
+          if ! unzip -l "$wheel" | grep -qE 'streamlit_markdown_editor/THIRD_PARTY_LICENSES\.txt'; then
+            echo "::error::Wheel is missing THIRD_PARTY_LICENSES.txt (run 'npm run licenses' and commit it)"
+            unzip -l "$wheel"
+            exit 1
+          fi
+          echo "OK: third-party license notice present in wheel"
       - uses: actions/upload-artifact@v5
         with:
           name: dist

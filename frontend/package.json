@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development vite build --watch",
     "build": "cross-env NODE_ENV=production vite build",
+    "licenses": "cross-env GEN_LICENSES=1 NODE_ENV=production vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -42,6 +43,7 @@
     "eslint-plugin-security": "^4.0.1",
     "prettier": "^3.4.2",
     "rimraf": "^6.0.1",
+    "rollup-plugin-license": "^3.7.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^8.0.10",
