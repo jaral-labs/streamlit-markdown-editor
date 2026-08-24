@@ -1,5 +1,5 @@
 Name: @milkdown/prose
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -31,7 +31,7 @@ SOFTWARE.
 ---
 
 Name: @milkdown/exception
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -63,7 +63,7 @@ SOFTWARE.
 ---
 
 Name: @milkdown/ctx
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -1757,7 +1757,7 @@ THE SOFTWARE.
 ---
 
 Name: @milkdown/transformer
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -1820,7 +1820,7 @@ THE SOFTWARE.
 ---
 
 Name: @milkdown/core
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -1885,7 +1885,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ---
 
 Name: @milkdown/utils
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -2022,7 +2022,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ---
 
 Name: @milkdown/preset-commonmark
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -2733,7 +2733,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ---
 
 Name: @milkdown/preset-gfm
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -2829,7 +2829,7 @@ terms above.
 ---
 
 Name: @milkdown/plugin-listener
-Version: 7.22.0
+Version: 7.22.1
 License: MIT
 Private: false
 Repository: git+https://github.com/Milkdown/milkdown.git
@@ -2861,7 +2861,7 @@ SOFTWARE.
 ---
 
 Name: @marijn/find-cluster-break
-Version: 1.0.3
+Version: 1.0.4
 License: MIT
 Private: false
 Description: Find the position of grapheme cluster breaks in a string
@@ -2995,7 +2995,7 @@ THE SOFTWARE.
 ---
 
 Name: @codemirror/view
-Version: 6.43.8
+Version: 6.43.9
 License: MIT
 Private: false
 Description: DOM view component for the CodeMirror code editor
@@ -3131,7 +3131,7 @@ THE SOFTWARE.
 ---
 
 Name: @codemirror/commands
-Version: 6.10.4
+Version: 6.11.0
 License: MIT
 Private: false
 Description: Collection of editing commands for the CodeMirror code editor
