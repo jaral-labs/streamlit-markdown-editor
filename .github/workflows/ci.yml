@@ -78,8 +78,12 @@ jobs:
       - name: Verify THIRD_PARTY_LICENSES.txt is committed and current
         working-directory: ${{ github.workspace }}
         run: |
-          git diff --exit-status THIRD_PARTY_LICENSES.txt \
-            || { echo "::error::THIRD_PARTY_LICENSES.txt is stale — run 'npm run licenses' in frontend/ and commit the result."; exit 1; }
+          if ! git diff --quiet -- THIRD_PARTY_LICENSES.txt; then
+            echo "::error::THIRD_PARTY_LICENSES.txt is stale — run 'npm run licenses' in frontend/ and commit the result."
+            git --no-pager diff -- THIRD_PARTY_LICENSES.txt
+            exit 1
+          fi
+          echo "OK: third-party license notice is current"
 
   integration:
     name: Packaged-component integration
