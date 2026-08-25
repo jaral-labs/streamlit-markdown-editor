@@ -2,6 +2,8 @@
 
 A Streamlit component providing a **dual-mode (WYSIWYG ⇄ raw) markdown editor** — markdown in, markdown out. Edit in a rich WYSIWYG surface or toggle to the raw CommonMark source; both stay in sync over one canonical string.
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://wysiwyg-markdown-editor.streamlit.app)
+
 ## What it is
 
 ![The streamlit-markdown-editor in WYSIWYG mode](docs/editor-wysiwyg.png)
