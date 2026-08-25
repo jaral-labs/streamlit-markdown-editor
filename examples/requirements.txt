@@ -1,0 +1,3 @@
+# Dependencies for the Streamlit Community Cloud demo (examples/app.py).
+# streamlit is pulled in transitively by streamlit-markdown-editor.
+streamlit-markdown-editor>=0.1.0
