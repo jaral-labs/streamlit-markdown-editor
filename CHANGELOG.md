@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.0](https://github.com/jaral-labs/streamlit-markdown-editor/compare/v0.0.2...v0.1.0) (2026-08-25)
+
+
+### Documentation
+
+* user + contributor documentation ([#10](https://github.com/jaral-labs/streamlit-markdown-editor/issues/10)) ([#17](https://github.com/jaral-labs/streamlit-markdown-editor/issues/17)) ([e54e525](https://github.com/jaral-labs/streamlit-markdown-editor/commit/e54e52594d5b5255b892c62cc710dca55d9668ed))
+
+
+### Miscellaneous Chores
+
+* release 0.1.0 ([#19](https://github.com/jaral-labs/streamlit-markdown-editor/issues/19)) ([ce0acee](https://github.com/jaral-labs/streamlit-markdown-editor/commit/ce0acee55f00fb9ae6088ffeabc2d4f9727730a9))
+
 ## [0.0.2](https://github.com/jaral-labs/streamlit-markdown-editor/compare/v0.0.1...v0.0.2) (2026-08-20)
 
 

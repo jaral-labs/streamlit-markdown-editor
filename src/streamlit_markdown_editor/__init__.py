@@ -8,4 +8,4 @@ from ._api import st_markdown_editor
 
 __all__ = ["st_markdown_editor"]
 
-__version__ = "0.0.2"  # x-release-please-version
+__version__ = "0.1.0"  # x-release-please-version
