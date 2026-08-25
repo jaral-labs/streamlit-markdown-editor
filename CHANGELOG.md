@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/jaral-labs/streamlit-markdown-editor/compare/v0.1.0...v0.1.1) (2026-08-25)
+
+
+### Documentation
+
+* add the "try it" demo badge to the README ([#11](https://github.com/jaral-labs/streamlit-markdown-editor/issues/11)) ([#21](https://github.com/jaral-labs/streamlit-markdown-editor/issues/21)) ([66ac621](https://github.com/jaral-labs/streamlit-markdown-editor/commit/66ac62125f06bc123abe998ae19eff3168240bb5))
+
 ## [0.1.0](https://github.com/jaral-labs/streamlit-markdown-editor/compare/v0.0.2...v0.1.0) (2026-08-25)
 
 
